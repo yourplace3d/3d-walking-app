@@ -164,7 +164,8 @@ try {
   await page.waitForTimeout(500);
   const vp = page.viewportSize();
   const centre = { x: vp.width / 2 - 60, y: vp.height / 2 - 60, width: 120, height: 120 };
-  const corner = { x: 0, y: 140, width: 90, height: 90 };
+  // low on the screen, below the walked strip (the camera looks north, tilted)
+  const corner = { x: 0, y: Math.round(vp.height * 0.7), width: 90, height: 90 };
   expect((await paperShare(page, corner)) > 0.9, 'before walking far, the map away from you is blank parchment');
 
   await walkEast(context, page, 0, 0, 24);

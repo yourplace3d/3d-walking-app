@@ -34,8 +34,10 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getEleme
 const MASK_PX = 1000;
 /** Save the walk at most this often while walking (ms). */
 const SAVE_EVERY_MS = 5000;
-/** The camera on a walk: tilted a little, close enough to see the street you're in. */
-const WALK_CAMERA = { azimuth: 0, tilt: 30, distance: 650 };
+/** The camera on a walk: tilted so buildings stand up, close enough to see the street you're in. */
+const WALK_CAMERA = { azimuth: 0, tilt: 55, distance: 300 };
+/** Hills a little higher than life, so slopes read on a phone. */
+const EXAGGERATION = 2;
 
 const store = new IdbStore();
 let walks: Walk[] = [];
@@ -104,12 +106,12 @@ let areaLoading: LngLat | null = null;
 
 /** The walker's mark: a dot with a wedge for the way the phone points. */
 const marker = new Group();
-const dot = new Mesh(new CircleGeometry(7, 32), new MeshBasicMaterial({ color: 0xa3237e, depthTest: false, transparent: true }));
-const halo = new Mesh(new RingGeometry(7, 10, 32), new MeshBasicMaterial({ color: 0xffffff, depthTest: false, transparent: true }));
-const wedge = new Mesh(new ConeGeometry(6, 16, 3), new MeshBasicMaterial({ color: 0xa3237e, depthTest: false, transparent: true }));
+const dot = new Mesh(new CircleGeometry(4, 32), new MeshBasicMaterial({ color: 0xa3237e, depthTest: false, transparent: true }));
+const halo = new Mesh(new RingGeometry(4, 6, 32), new MeshBasicMaterial({ color: 0xffffff, depthTest: false, transparent: true }));
+const wedge = new Mesh(new ConeGeometry(3.5, 10, 3), new MeshBasicMaterial({ color: 0xa3237e, depthTest: false, transparent: true }));
 dot.rotation.x = halo.rotation.x = -Math.PI / 2;
 wedge.rotation.x = -Math.PI / 2;
-wedge.position.set(0, 0, -17);
+wedge.position.set(0, 0, -10);
 const wedgeHolder = new Group();
 wedgeHolder.add(wedge);
 wedgeHolder.visible = false;
@@ -155,7 +157,9 @@ async function loadArea(centre: LngLat, focus?: { at: LngLat; distance?: number 
   const gl = viewer.renderer.getContext();
   const px = Math.min(viewer.small ? 2048 : 4096, gl.getParameter(gl.MAX_TEXTURE_SIZE) as number);
   const model = new CityModel(grid, px, '#a3237e');
-  model.setExaggeration(1.5);
+  model.setExaggeration(EXAGGERATION);
+  // contour lines, as on an orienteering map: they show only where the map is revealed
+  model.setContours(true);
   model.showPin(false);
   // the map has no edge: no plinth walls, no base, just the surface on parchment
   model.terrain.walls.visible = false;
