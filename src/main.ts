@@ -38,6 +38,8 @@ const SAVE_EVERY_MS = 5000;
 const WALK_CAMERA = { azimuth: 0, tilt: 55, distance: 300 };
 /** Hills a little higher than life, so slopes read on a phone. */
 const EXAGGERATION = 2;
+/** How dark the contour lines are (0–1). */
+const CONTOUR_STRENGTH = 0.4;
 
 const store = new IdbStore();
 let walks: Walk[] = [];
@@ -160,6 +162,8 @@ async function loadArea(centre: LngLat, focus?: { at: LngLat; distance?: number 
   model.setExaggeration(EXAGGERATION);
   // contour lines, as on an orienteering map: they show only where the map is revealed
   model.setContours(true);
+  // soft: in flat cities the terrain data is noisy, and strong lines would zigzag across the streets
+  model.contour.value = CONTOUR_STRENGTH;
   model.showPin(false);
   // the map has no edge: no plinth walls, no base, just the surface on parchment
   model.terrain.walls.visible = false;
@@ -636,7 +640,7 @@ if (new URLSearchParams(location.search).has('video') && viewer) {
       }
       marker.visible = true;
       // seen from further away than on a walk: a bigger dot
-      marker.scale.setScalar(3);
+      marker.scale.setScalar(1.8);
       marker.position.set(e, area.model.groundY(e, n) + 3, -n);
       wedgeHolder.visible = true;
       wedgeHolder.rotation.y = -(headingDeg * Math.PI) / 180;

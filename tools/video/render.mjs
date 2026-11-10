@@ -27,9 +27,9 @@ const VIDEOS = {
   promo: {
     file: 'walk-it-3d-promo-9x16.mp4',
     scenes: [
-      { place: 'Hong Kong', lat: 22.2795, lon: 114.1605, seconds: 4, before: 260, during: 230, radius: 50, lines: ['No street names.', ''], seed: 3 },
-      { place: 'Porto', lat: 41.1405, lon: -8.611, seconds: 4, before: 260, during: 230, radius: 50, lines: ['No labels.', ''], seed: 5 },
-      { place: 'Salzburg', lat: 47.7985, lon: 13.0455, seconds: 4, before: 260, during: 230, radius: 50, lines: ['The map appears', 'where you walk.'], seed: 7 },
+      { place: 'Hong Kong', lat: 22.2795, lon: 114.1605, seconds: 4, before: 650, during: 260, radius: 55, lines: ['No street names.', ''], seed: 3 },
+      { place: 'Porto', lat: 41.1405, lon: -8.611, seconds: 4, before: 650, during: 260, radius: 55, lines: ['No labels.', ''], seed: 5 },
+      { place: 'Salzburg', lat: 47.7985, lon: 13.0455, seconds: 4, before: 650, during: 260, radius: 55, lines: ['The map appears', 'where you walk.'], seed: 7 },
     ],
     end: { seconds: 3, title: 'Walk it 3D', what: 'A map and a compass is all you get.', free: 'Free · No account · Your walks stay on your phone' },
   },
@@ -256,7 +256,7 @@ for (const name of which) {
       target = target ? [target[0] + (r.at[0] - target[0]) * 0.12, target[1] + (r.at[1] - target[1]) * 0.12] : r.at;
       const az = -25 + 50 * ease(u);
       const tilt = 46 + 8 * ease(u);
-      const distance = scene.before ? 520 : 380 + 420 * ease(u);
+      const distance = scene.before ? 820 - 120 * ease(u) : 380 + 420 * ease(u);
       const dip = clamp(si === 0 ? 1 - s / 0.5 : 1 - s / 0.3) || clamp((s - (scene.seconds - 0.3)) / 0.3) * (last ? 0 : 1);
       const lateOn = scene.late ? clamp((u - 0.62) / 0.06) : 0;
       const cap = clamp(Math.min((s - 0.3) / 0.45, (scene.seconds - 0.25 - s) / 0.4)) * (1 - lateOn);
