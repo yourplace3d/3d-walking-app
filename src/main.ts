@@ -615,6 +615,11 @@ if (new URLSearchParams(location.search).has('video') && viewer) {
       await loadArea({ lat, lon });
     },
     stage: () => debug.area,
+    contours(strength: number) {
+      if (area) area.model.contour.value = strength;
+      v.requestRender();
+    },
+    info: () => (area ? { ...area.model.stats(), interval: area.model.uniforms.uInterval.value } : null),
     /** walkable lines (local metres), for the route */
     streets: () =>
       (area?.model.featureSet?.lines ?? [])
