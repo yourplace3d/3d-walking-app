@@ -37,7 +37,7 @@ export const en = {
   // walking
   waitingGps: 'Waiting for your position…',
   gpsAccuracy: (m: string) => `Position ±${m} m`,
-  gpsWeak: (m: string) => `Weak signal (±${m} m): the map waits for a better fix`,
+  gpsWeak: (m: string) => `Weak GPS (±${m} m): the map opens again when the signal is better. Open sky helps.`,
   gpsDenied: 'Location is off for this site. Allow it in your browser settings to walk.',
   gpsUnavailable: 'This device can’t give a position.',
   loadingMap: 'Loading the map…',

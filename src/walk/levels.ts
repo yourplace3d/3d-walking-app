@@ -11,12 +11,17 @@ export interface LevelRules {
   revealM: number;
   /** your own position as a dot on the map */
   showDot: boolean;
+  /**
+   * GPS fixes less accurate than this don't open the map (m). Phones often fall back to rough
+   * Wi-Fi or mast positions in town; a wide band can take a rougher fix than a narrow one.
+   */
+  maxAccuracyM: number;
 }
 
 export const LEVEL_RULES: Record<Level, LevelRules> = {
-  easy: { revealM: 100, showDot: true },
-  medium: { revealM: 50, showDot: true },
-  hard: { revealM: 25, showDot: false },
+  easy: { revealM: 100, showDot: true, maxAccuracyM: 60 },
+  medium: { revealM: 50, showDot: true, maxAccuracyM: 45 },
+  hard: { revealM: 25, showDot: false, maxAccuracyM: 35 },
 };
 
 export function isLevel(v: unknown): v is Level {

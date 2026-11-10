@@ -21,9 +21,14 @@ const fix = (e: number, n: number, s: number, accuracy = 8) => {
 
 describe('levels', () => {
   it('opens 100, 50 and 25 m, and hides you only on hard', () => {
-    expect(LEVEL_RULES.easy).toEqual({ revealM: 100, showDot: true });
-    expect(LEVEL_RULES.medium).toEqual({ revealM: 50, showDot: true });
-    expect(LEVEL_RULES.hard).toEqual({ revealM: 25, showDot: false });
+    expect(LEVEL_RULES.easy).toMatchObject({ revealM: 100, showDot: true });
+    expect(LEVEL_RULES.medium).toMatchObject({ revealM: 50, showDot: true });
+    expect(LEVEL_RULES.hard).toMatchObject({ revealM: 25, showDot: false });
+  });
+  it('lets a wider band take a rougher GPS fix, hard stays strict', () => {
+    expect(LEVEL_RULES.easy.maxAccuracyM).toBe(60);
+    expect(LEVEL_RULES.medium.maxAccuracyM).toBe(45);
+    expect(LEVEL_RULES.hard.maxAccuracyM).toBe(MAX_ACCURACY_M);
   });
 });
 
@@ -34,6 +39,10 @@ describe('GPS fixes', () => {
   it('drops fixes that are not accurate enough', () => {
     expect(judgeFix(fix(0, 0, 0, MAX_ACCURACY_M + 1), null)).toBe('inaccurate');
     expect(judgeFix({ ...fix(0, 0, 0), accuracy: NaN }, null)).toBe('inaccurate');
+  });
+  it('takes a rougher fix when the level allows it', () => {
+    expect(judgeFix(fix(0, 0, 0, 50), null, 60)).toBe('keep');
+    expect(judgeFix(fix(0, 0, 0, 50), null, 45)).toBe('inaccurate');
   });
   it('ignores standing still', () => {
     expect(judgeFix(fix(2, 1, 5), pt(0, 0, 0))).toBe('still');
@@ -182,6 +191,8 @@ describe('walk storage', () => {
 
 describe('tracker', () => {
   it('ignores positions from before the walk', () => {
+    const tr0 = new Tracker(0, 60);
+    expect(tr0.next(fix(0, 0, 1000, 55), null).verdict).toBe('keep');
     const tr = new Tracker(100_000);
     expect(tr.next(fix(0, 0, 50), null).verdict).toBe('stale');
     expect(tr.next(fix(0, 0, 101), null).point).not.toBeNull();

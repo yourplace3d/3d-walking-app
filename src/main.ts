@@ -122,6 +122,13 @@ marker.renderOrder = 10;
 for (const m of [dot, halo, wedge]) m.renderOrder = 10;
 marker.visible = false;
 
+/** A faint dot: the position shows, but this fix doesn't open the map (weak signal or a jump). */
+function setDotFaint(faint: boolean): void {
+  const o = faint ? 0.35 : 1;
+  for (const m of [dot, halo, wedge]) (m.material as MeshBasicMaterial).opacity = o;
+  debug.dotFaint = faint;
+}
+
 /** All walks to draw: the stored ones and the one on now. */
 function allWalks(): Walk[] {
   return current ? [...walks.filter((w) => w.id !== current!.id), current] : walks;
@@ -182,6 +189,7 @@ async function loadArea(centre: LngLat, focus?: { at: LngLat; distance?: number 
   }
   area = { centre, model, mask, fog, toLocal: makeProjector(centre).toLocal };
   areaLoading = null;
+  debug.square = areaKey(centre);
   viewer.setModel(model);
   if (old) {
     old.model.group.remove(marker);
@@ -242,7 +250,7 @@ function lastFixText(): string {
   if (screenNow !== 'walk') return '';
   if (!lastFix) return t.waitingGps;
   const m = String(Math.round(lastFix.accuracy));
-  return judgeFix(lastFix, null) === 'inaccurate' ? t.gpsWeak(m) : t.gpsAccuracy(m);
+  return judgeFix(lastFix, null, rules().maxAccuracyM) === 'inaccurate' ? t.gpsWeak(m) : t.gpsAccuracy(m);
 }
 
 async function startWalk(level: Level, resume: Walk | null): Promise<void> {
@@ -262,8 +270,9 @@ async function startWalk(level: Level, resume: Walk | null): Promise<void> {
   }
   sessionStart = current.points.length;
   // a phone may first hand over a position from before the walk started
-  tracker = new Tracker(Date.now() - 5000);
+  tracker = new Tracker(Date.now() - 5000, rules().maxAccuracyM);
   lastFix = null;
+  setDotFaint(false);
   follow = rules().showDot;
   marker.visible = false;
   $('stat-level').textContent = t[`level_${current.level}`];
@@ -276,7 +285,7 @@ async function startWalk(level: Level, resume: Walk | null): Promise<void> {
     setStatus(t.gpsUnavailable);
     return;
   }
-  watchId = navigator.geolocation.watchPosition(onPosition, onPositionError, { enableHighAccuracy: true, maximumAge: 2000, timeout: 30000 });
+  watchGps();
   if (compassOk) {
     stopHeading = watchHeading((h) => {
       heading = h;
@@ -289,6 +298,22 @@ async function startWalk(level: Level, resume: Walk | null): Promise<void> {
   // where the walk was, show it straight away (a resumed walk)
   const last = current.points.at(-1);
   if (last) void loadArea(areaCentre({ lon: last[0], lat: last[1] }), { at: { lon: last[0], lat: last[1] } });
+}
+
+function watchGps(): void {
+  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+  watchId = navigator.geolocation.watchPosition(onPosition, onPositionError, { enableHighAccuracy: true, maximumAge: 2000, timeout: 30000 });
+}
+
+/**
+ * Back from a locked screen or another app: browsers pause GPS meanwhile, and often hand over an
+ * old or rough position first. Ask afresh and take only positions from now on.
+ */
+function resumeGps(): void {
+  if (!current || screenNow !== 'walk' || watchId === null) return;
+  tracker = new Tracker(Date.now() - 1000, rules().maxAccuracyM);
+  watchGps();
+  setStatus(t.waitingGps);
 }
 
 function onPosition(pos: GeolocationPosition): void {
@@ -320,6 +345,7 @@ function onPosition(pos: GeolocationPosition): void {
       void store.put(current);
     }
   }
+  setDotFaint(!p && verdict !== 'still');
   placeMarker(fix);
   setStatus(lastFixText());
   updateStats();
@@ -410,6 +436,7 @@ async function setWakeLock(on: boolean): Promise<void> {
 }
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && ($('wake') as HTMLInputElement).checked && current) void setWakeLock(true);
+  if (document.visibilityState === 'visible') resumeGps();
   // the walk is saved when the page goes away (a phone may close it without warning)
   if (document.visibilityState === 'hidden' && current) void store.put(current);
 });

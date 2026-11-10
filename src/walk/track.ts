@@ -20,7 +20,7 @@ export interface Fix {
  */
 export type WalkPoint = [number, number, number, 1?];
 
-/** Fixes less accurate than this are dropped (m). */
+/** Fixes less accurate than this are dropped (m), unless the level allows rougher ones. */
 export const MAX_ACCURACY_M = 35;
 /** Smaller steps than this are standing still or GPS noise (m). */
 export const MIN_STEP_M = 4;
@@ -43,8 +43,8 @@ export function metresBetween(aLon: number, aLat: number, bLon: number, bLat: nu
 export type FixVerdict = 'keep' | 'inaccurate' | 'still' | 'jump';
 
 /** Whether a fix becomes the next point of the walk, given the last point kept (if any). */
-export function judgeFix(fix: Fix, last: WalkPoint | null): FixVerdict {
-  if (!Number.isFinite(fix.lon) || !Number.isFinite(fix.lat) || !(fix.accuracy <= MAX_ACCURACY_M)) return 'inaccurate';
+export function judgeFix(fix: Fix, last: WalkPoint | null, maxAccuracyM = MAX_ACCURACY_M): FixVerdict {
+  if (!Number.isFinite(fix.lon) || !Number.isFinite(fix.lat) || !(fix.accuracy <= maxAccuracyM)) return 'inaccurate';
   if (!last) return 'keep';
   const d = metresBetween(last[0], last[1], fix.lon, fix.lat);
   if (d < Math.max(MIN_STEP_M, fix.accuracy * 0.5)) return 'still';
@@ -79,23 +79,26 @@ export const CONFIRM_JUMP_MS = 3000;
 export class Tracker {
   private pending: WalkPoint | null = null;
 
-  constructor(private readonly notBefore = 0) {}
+  constructor(
+    private readonly notBefore = 0,
+    private readonly maxAccuracyM = MAX_ACCURACY_M,
+  ) {}
 
   next(fix: Fix, last: WalkPoint | null): { verdict: FixVerdict | 'stale'; point: WalkPoint | null } {
     if (fix.time < this.notBefore) return { verdict: 'stale', point: null };
-    const verdict = judgeFix(fix, last);
+    const verdict = judgeFix(fix, last, this.maxAccuracyM);
     if (verdict === 'keep') {
       this.pending = null;
       return { verdict, point: [fix.lon, fix.lat, fix.time] };
     }
     if (verdict !== 'jump') return { verdict, point: null };
     const p = this.pending;
-    const agrees = p && judgeFix(fix, p) !== 'jump' && fix.time - p[2] >= CONFIRM_JUMP_MS;
+    const agrees = p && judgeFix(fix, p, this.maxAccuracyM) !== 'jump' && fix.time - p[2] >= CONFIRM_JUMP_MS;
     if (agrees) {
       this.pending = null;
       return { verdict: 'keep', point: [fix.lon, fix.lat, fix.time, 1] };
     }
-    if (!p || judgeFix(fix, p) === 'jump') this.pending = [fix.lon, fix.lat, fix.time];
+    if (!p || judgeFix(fix, p, this.maxAccuracyM) === 'jump') this.pending = [fix.lon, fix.lat, fix.time];
     return { verdict, point: null };
   }
 }

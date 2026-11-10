@@ -31,7 +31,7 @@ export const es: Messages = {
 
   waitingGps: 'Esperando tu posición…',
   gpsAccuracy: (m) => `Posición ±${m} m`,
-  gpsWeak: (m) => `Señal débil (±${m} m): el mapa espera una posición mejor`,
+  gpsWeak: (m) => `GPS débil (±${m} m): el mapa vuelve a abrirse cuando mejore la señal. El cielo abierto ayuda.`,
   gpsDenied: 'La ubicación está desactivada para este sitio. Actívala en los ajustes del navegador para caminar.',
   gpsUnavailable: 'Este dispositivo no puede dar una posición.',
   loadingMap: 'Cargando el mapa…',

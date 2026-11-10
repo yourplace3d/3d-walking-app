@@ -30,7 +30,7 @@ if (!existsSync(join(dist, 'index.html'))) {
 const START = { lat: 48.7765, lon: 9.1772 };
 const M_LAT = 111200;
 const M_LON = 111320 * Math.cos((START.lat * Math.PI) / 180);
-const at = (e, n) => ({ latitude: START.lat + n / M_LAT, longitude: START.lon + e / M_LON, accuracy: 6 });
+const at = (e, n, accuracy = 6) => ({ latitude: START.lat + n / M_LAT, longitude: START.lon + e / M_LON, accuracy });
 
 // ---- static server
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json', '.json': 'application/json' };
@@ -133,9 +133,9 @@ async function paperShare(page, region) {
   }, png);
 }
 /** Walk east from (e0, n0) in steps of `step` m, one fix a second (a brisk walking pace). */
-async function walkEast(context, page, e0, n0, steps, step = 5) {
+async function walkEast(context, page, e0, n0, steps, step = 5, accuracy = 6) {
   for (let i = 1; i <= steps; i++) {
-    await context.setGeolocation(at(e0 + i * step, n0));
+    await context.setGeolocation(at(e0 + i * step, n0, accuracy));
     await page.waitForTimeout(1050);
   }
 }
@@ -168,8 +168,15 @@ try {
   const corner = { x: 0, y: Math.round(vp.height * 0.7), width: 90, height: 90 };
   expect((await paperShare(page, corner)) > 0.9, 'before walking far, the map away from you is blank parchment');
 
-  await walkEast(context, page, 0, 0, 24);
+  // weak GPS (rough Wi-Fi or mast positions): on medium it opens nothing, and the dot fades
+  const keptAtStart = (await state(page)).kept;
+  await walkEast(context, page, 0, 0, 3, 5, 50);
   let s = await state(page);
+  expect(s.kept === keptAtStart && s.dotFaint === true, `a weak fix on medium opens nothing and the dot fades (${keptAtStart} → ${s.kept} kept)`);
+  expect(/Weak GPS/.test(await page.textContent('#status')), 'the status says the GPS is weak');
+  await walkEast(context, page, 0, 0, 24);
+  s = await state(page);
+  expect(s.dotFaint === false, 'a good fix: the dot is solid again');
   expect(s.kept >= 15, `GPS fixes become the walk (${s.kept} points kept)`);
   const firstKept = s.kept;
   // ~120 m walked at 50 m each side: about 2 × 50 × 120 + π × 50² ≈ 19,800 m²
@@ -239,6 +246,34 @@ try {
   const opened = s.revealedM2 - hardBefore;
   expect(opened > 2500 && opened < 6000, `hard opens 25 m each side (${Math.round(opened)} m² for ~60 m)`);
   await page.screenshot({ path: join(out, '06-hard.png') });
+  await page.click('#btn-end');
+  await page.click('#btn-summary-done');
+
+  // ---- easy, rough GPS, and on into the next map square
+  // the square's centre, as the app's fixed 1 km grid puts it (src/walk/area.ts)
+  const LAT_STEP = 1000 / 111320;
+  const row = Math.round(START.lat / LAT_STEP);
+  const lonStep = 1000 / (111320 * Math.cos((row * LAT_STEP * Math.PI) / 180));
+  const sqE = (Math.round(START.lon / lonStep) * lonStep - START.lon) * M_LON;
+  const sqN = (row * LAT_STEP - START.lat) * M_LAT;
+  await page.click('#btn-start');
+  await page.check('input[name="level"][value="easy"]');
+  await context.setGeolocation(at(sqE + 520, sqN, 50));
+  await page.click('#btn-go');
+  await waitFor(page, (s) => s.stage === 'walk' && s.area === 'ready', 'the easy walk');
+  const firstSquare = (await state(page)).square;
+  await walkEast(context, page, sqE + 520, sqN, 24, 6, 50);
+  s = await state(page);
+  expect(s.kept >= 3 && s.dotFaint === false, `on easy a rough fix (±50 m) still opens the map (${s.kept} kept)`);
+  await waitFor(page, (s) => s.square !== firstSquare && s.area === 'ready', 'the next square to load');
+  const squareBefore = (await state(page)).revealedM2;
+  expect(squareBefore > 20000, `the next square shows the walk so far (${Math.round(squareBefore)} m²)`);
+  // back from a locked screen: GPS is asked afresh and the walk goes on
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await walkEast(context, page, sqE + 664, sqN, 10, 6);
+  s = await state(page);
+  expect(s.revealedM2 > squareBefore + 3000, `the map keeps opening in the next square (${Math.round(squareBefore)} → ${Math.round(s.revealedM2)} m²)`);
+  await page.screenshot({ path: join(out, '06b-next-square.png') });
   await page.click('#btn-end');
   await page.click('#btn-summary-done');
 
