@@ -86,7 +86,7 @@ function graph(streets) {
 const STREET_KINDS = new Set(['primary', 'secondary', 'tertiary', 'minor']);
 
 /** A walk of `length` m along streets, from near the centre, always heading for new ground, inside `limit` m. */
-function walkRoute(streets, length, seed, limit = 750) {
+function walkRoute(streets, length, seed, limit = 650) {
   const all = [...graph(streets.filter((s) => STREET_KINDS.has(s.kind))).values()];
   // the biggest connected street network, so the walk can't get stuck in a dead-end piece
   const comp = new Map();
@@ -116,12 +116,13 @@ function walkRoute(streets, length, seed, limit = 750) {
     let next = null;
     let bestScore = -Infinity;
     for (const nb of cur.edges) {
+      // never off the loaded map
+      if (Math.hypot(...nb.p) > limit) continue;
       const a = Math.atan2(nb.p[1] - cur.p[1], nb.p[0] - cur.p[0]);
       const e = [cur.k, nb.k].sort().join('|');
       let score = Math.cos(a - prefer) + Math.cos(a - dir) * 0.9 + rnd() * 0.25;
       if (used.has(e)) score -= 4;
       if (visited.has(nb.k)) score -= 1.5;
-      if (Math.hypot(...nb.p) > limit) score -= 5;
       if (score > bestScore) {
         bestScore = score;
         next = nb;
