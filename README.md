@@ -42,6 +42,10 @@ npm test           # unit tests (vitest)
 npm run e2e        # build + headless-browser test with a made-up city and an emulated GPS walk
 ```
 
+**Deploys.** `.github/workflows/pages.yml` runs the unit tests, builds, and publishes `dist/` to GitHub Pages on
+every push to `main`. One-time setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**. The app
+is then at https://yourplace3d.github.io/3d-walking-app/.
+
 The end-to-end test needs Playwright with Chromium; it answers every map request from fixtures
 (`e2e/fixtures/`), so it runs without network. Screenshots go to `e2e/out/`.
 
