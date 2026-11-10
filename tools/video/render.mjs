@@ -42,9 +42,10 @@ const VIDEOS = {
   paris: {
     file: 'walk-it-3d-paris-9x16.mp4',
     scenes: [
-      { place: 'Paris', lat: 48.8585, lon: 2.347, seconds: 17, before: 0, during: 1300, radius: 50, lines: ['Paris, downtown.', 'Revealed on foot.'], seed: 11, late: ['Wanna walk it yourself?', 'Name the city.'] },
+      { place: 'Paris', lat: 48.8585, lon: 2.347, seconds: 17, before: 0, during: 1300, radius: 50, lines: ['Paris, downtown.', 'Revealed on foot.'], seed: 11, late: ['Wanna walk it yourself?', 'Name your city.'] },
     ],
-    end: { seconds: 3, title: 'Walk it 3D', what: 'Wanna walk it yourself?', free: 'Any city · Free · No account' },
+    // for YouTube Shorts: no address on screen, people ask in the comments and find the link in the description
+    end: { seconds: 3, title: 'Walk it 3D', what: 'Wanna walk it yourself?', free: 'Name your city in the comments.', url: 'Free app · link in the description' },
   },
 };
 
@@ -216,7 +217,7 @@ const HTML = (end) => `
       <h1>${end.title}</h1>
       <div class="what">${end.what}</div>
       <div class="free">${end.free}</div>
-      <div class="url">${SITE}</div>
+      <div class="url">${end.url ?? SITE}</div>
       <div class="osm">Map data © OpenStreetMap contributors</div>
     </div>
   </div>`;
