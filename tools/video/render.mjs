@@ -22,16 +22,21 @@ const STEP = Number(process.env.STEP || 1);
 const W = 1080;
 const H = 1920;
 
+/** Height as it is: exaggerated hills make city ground look bumpy on video. */
+const EXAGGERATION = 1;
+/** Fade through the parchment between cities (s): the map closes and the next one opens. */
+const FADE_S = 0.55;
+
 const VIDEOS = {
   // 15 s: three cities, each already partly walked, the walk going on; then the end card
   promo: {
     file: 'walk-it-3d-promo-9x16.mp4',
     scenes: [
-      { place: 'Hong Kong', lat: 22.2795, lon: 114.1605, seconds: 4, before: 650, during: 260, radius: 55, lines: ['No street names.', ''], seed: 3 },
-      { place: 'Porto', lat: 41.1405, lon: -8.611, seconds: 4, before: 650, during: 260, radius: 55, lines: ['No labels.', ''], seed: 5 },
-      { place: 'Salzburg', lat: 47.7985, lon: 13.0455, seconds: 4, before: 650, during: 260, radius: 55, lines: ['The map appears', 'where you walk.'], seed: 7 },
+      { place: 'Hong Kong', lat: 22.2795, lon: 114.1605, seconds: 4.4, before: 0, during: 560, radius: 50, lines: ['No street names.', ''], seed: 3 },
+      { place: 'Porto', lat: 41.1405, lon: -8.611, seconds: 4.4, before: 0, during: 560, radius: 50, lines: ['No labels.', ''], seed: 5 },
+      { place: 'Salzburg', lat: 47.7985, lon: 13.0455, seconds: 4.4, before: 0, during: 560, radius: 50, lines: ['The map appears', 'where you walk.'], seed: 7 },
     ],
-    end: { seconds: 3, title: 'Walk it 3D', what: 'A map and a compass is all you get.', free: 'Free · No account · Your walks stay on your phone' },
+    end: { seconds: 1.8, title: 'Walk it 3D', what: 'A map and a compass is all you get.', free: 'Free · No account · Your walks stay on your phone' },
   },
   // 20 s: Paris from blank parchment, revealed as the walk goes; then "walk it yourself"
   paris: {
@@ -77,47 +82,61 @@ function graph(streets) {
   return nodes;
 }
 
-/** A wandering walk of `length` m from the street node nearest the centre, keeping inside `limit` m. */
+/** Streets a walker would follow: no footpaths through parks and courtyards, no service lanes. */
+const STREET_KINDS = new Set(['primary', 'secondary', 'tertiary', 'minor']);
+
+/** A walk of `length` m along streets, from near the centre, always heading for new ground, inside `limit` m. */
 function walkRoute(streets, length, seed, limit = 750) {
-  const nodes = [...graph(streets).values()];
+  const all = [...graph(streets.filter((s) => STREET_KINDS.has(s.kind))).values()];
+  // the biggest connected street network, so the walk can't get stuck in a dead-end piece
+  const comp = new Map();
+  let best = [];
+  for (const n of all) {
+    if (comp.has(n)) continue;
+    const members = [n];
+    comp.set(n, members);
+    for (let i = 0; i < members.length; i++) for (const nb of members[i].edges) if (!comp.has(nb)) { comp.set(nb, members); members.push(nb); }
+    if (members.length > best.length) best = members;
+  }
   const rnd = mulberry(seed);
-  let cur = nodes.reduce((best, n) => (Math.hypot(...n.p) < Math.hypot(...best.p) ? n : best));
+  let cur = best.reduce((b, n) => (Math.hypot(...n.p) < Math.hypot(...b.p) ? n : b));
+  const start = cur.p;
   const path = [cur.p];
   const used = new Set();
+  const visited = new Set([cur.k]);
   let dir = rnd() * Math.PI * 2;
   let prefer = dir;
   let total = 0;
   let sinceTurn = 0;
   while (total < length) {
-    if (sinceTurn > 220) {
-      prefer += (rnd() < 0.5 ? -1 : 1) * (0.6 + rnd() * 0.6);
+    if (sinceTurn > 180) {
+      prefer += (rnd() < 0.5 ? -1 : 1) * (0.5 + rnd() * 0.7);
       sinceTurn = 0;
     }
-    let best = null;
+    let next = null;
     let bestScore = -Infinity;
     for (const nb of cur.edges) {
-      const dx = nb.p[0] - cur.p[0];
-      const dy = nb.p[1] - cur.p[1];
-      const a = Math.atan2(dy, dx);
+      const a = Math.atan2(nb.p[1] - cur.p[1], nb.p[0] - cur.p[0]);
       const e = [cur.k, nb.k].sort().join('|');
-      let score = Math.cos(a - prefer) * 1.0 + Math.cos(a - dir) * 0.8 + rnd() * 0.3;
-      if (used.has(e)) score -= 3;
-      if (Math.hypot(...nb.p) > limit) score -= 4;
+      let score = Math.cos(a - prefer) + Math.cos(a - dir) * 0.9 + rnd() * 0.25;
+      if (used.has(e)) score -= 4;
+      if (visited.has(nb.k)) score -= 1.5;
+      if (Math.hypot(...nb.p) > limit) score -= 5;
       if (score > bestScore) {
         bestScore = score;
-        best = nb;
+        next = nb;
       }
     }
-    if (!best) break;
-    const d = Math.hypot(best.p[0] - cur.p[0], best.p[1] - cur.p[1]);
-    used.add([cur.k, best.k].sort().join('|'));
-    dir = Math.atan2(best.p[1] - cur.p[1], best.p[0] - cur.p[0]);
-    // head back in when near the edge
-    if (Math.hypot(...best.p) > limit * 0.85) prefer = Math.atan2(-best.p[1], -best.p[0]);
+    if (!next) break;
+    const d = Math.hypot(next.p[0] - cur.p[0], next.p[1] - cur.p[1]);
+    used.add([cur.k, next.k].sort().join('|'));
+    visited.add(next.k);
+    dir = Math.atan2(next.p[1] - cur.p[1], next.p[0] - cur.p[0]);
+    if (Math.hypot(...next.p) > limit * 0.85) prefer = Math.atan2(start[1] - next.p[1], start[0] - next.p[0]);
     total += d;
     sinceTurn += d;
-    path.push(best.p);
-    cur = best;
+    path.push(next.p);
+    cur = next;
   }
   return path;
 }
@@ -222,7 +241,7 @@ for (const name of which) {
     page.on('pageerror', (e) => console.log(`  [${scene.place}] page error: ${e.message}`));
     await page.goto(base);
     await page.waitForFunction(() => !!window.__walkVideo);
-    await page.evaluate(({ lat, lon }) => window.__walkVideo.load(lat, lon), scene);
+    await page.evaluate(({ lat, lon, ex }) => window.__walkVideo.load(lat, lon, ex), { ...scene, ex: EXAGGERATION });
     await page.waitForFunction(() => ['ready', 'error'].includes(window.__walkVideo.stage()), null, { timeout: 240000 });
     const stage = await page.evaluate(() => window.__walkVideo.stage());
     const streets = await page.evaluate(() => window.__walkVideo.streets());
@@ -250,14 +269,16 @@ for (const name of which) {
       const s = i / FPS;
       const u = i / (total - 1);
       // walk at an even pace, easing in at the very start
-      const dist = scene.before + scene.during * (scene.before ? u : Math.min(u, ease(u * 4) * 0.25 + Math.max(0, u - 0.25)) );
-      const r = upTo(path, dist);
+      const walked = scene.before + scene.during * Math.min(u, ease(u * 4) * 0.25 + Math.max(0, u - 0.25));
+      const r = upTo(path, walked);
       // the camera trails the walker a little
-      target = target ? [target[0] + (r.at[0] - target[0]) * 0.12, target[1] + (r.at[1] - target[1]) * 0.12] : r.at;
+      target = target ? [target[0] + (r.at[0] - target[0]) * 0.3, target[1] + (r.at[1] - target[1]) * 0.3] : r.at;
       const az = -25 + 50 * ease(u);
-      const tilt = 46 + 8 * ease(u);
-      const distance = scene.before ? 820 - 120 * ease(u) : 380 + 420 * ease(u);
-      const dip = clamp(si === 0 ? 1 - s / 0.5 : 1 - s / 0.3) || clamp((s - (scene.seconds - 0.3)) / 0.3) * (last ? 0 : 1);
+      // the promo looks more from above, so tall towers don't stand out of the frame
+      const tilt = scene.seconds > 10 ? 46 + 8 * ease(u) : 26 + 8 * ease(u);
+      // close at the start, pulling back as the map grows
+      const distance = scene.seconds > 10 ? 380 + 420 * ease(u) : 560 + 260 * ease(u);
+      const dip = Math.max(clamp(1 - s / FADE_S), last ? 0 : clamp((s - (scene.seconds - FADE_S)) / FADE_S));
       const lateOn = scene.late ? clamp((u - 0.62) / 0.06) : 0;
       const cap = clamp(Math.min((s - 0.3) / 0.45, (scene.seconds - 0.25 - s) / 0.4)) * (1 - lateOn);
       await page.evaluate(({ pts, at, heading, radius, cam, dip, cap, late }) => {

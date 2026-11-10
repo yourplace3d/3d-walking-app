@@ -608,11 +608,13 @@ void refreshHome();
 if (new URLSearchParams(location.search).has('video') && viewer) {
   const v = viewer;
   (window as unknown as { __walkVideo: unknown }).__walkVideo = {
-    async load(lat: number, lon: number) {
+    async load(lat: number, lon: number, exaggeration = EXAGGERATION) {
       setScreen('map');
       for (const el of document.querySelectorAll<HTMLElement>('.hud, .card')) el.hidden = true;
       area = null;
       await loadArea({ lat, lon });
+      (area as Area | null)?.model.setExaggeration(exaggeration);
+      v.retarget();
     },
     stage: () => debug.area,
     contours(strength: number) {
