@@ -596,3 +596,54 @@ $('btn-delete-map').addEventListener('click', async () => {
 
 setScreen('home');
 void refreshHome();
+
+// ------------------------------------------------------------------ video recording (tools/video)
+
+// Only with ?video in the address: lets tools/video/render.mjs load a square, reveal a made-up walk
+// and set the camera frame by frame. Nothing here runs for a walker.
+if (new URLSearchParams(location.search).has('video') && viewer) {
+  const v = viewer;
+  (window as unknown as { __walkVideo: unknown }).__walkVideo = {
+    async load(lat: number, lon: number) {
+      setScreen('map');
+      for (const el of document.querySelectorAll<HTMLElement>('.hud, .card')) el.hidden = true;
+      area = null;
+      await loadArea({ lat, lon });
+    },
+    stage: () => debug.area,
+    /** walkable lines (local metres), for the route */
+    streets: () =>
+      (area?.model.featureSet?.lines ?? [])
+        .filter((l) => ['primary', 'secondary', 'tertiary', 'minor', 'path', 'service'].includes(l.kind))
+        .map((l) => ({ kind: l.kind, pts: l.pts })),
+    ground: (e: number, n: number) => area?.model.groundY(e, n) ?? 0,
+    /** open the map along a path of local points, `radius` m each side */
+    reveal(path: Array<[number, number]>, radius: number) {
+      if (!area) return;
+      area.mask.clear();
+      const ll = (p: [number, number]) => {
+        const q = makeProjector(area!.centre).toLngLat(p[0], p[1]);
+        return [q.lon, q.lat, 0] as [number, number, number];
+      };
+      for (let i = 0; i < path.length; i++) area.mask.addStep(i ? ll(path[i - 1]) : null, ll(path[i]), radius);
+      area.fog.update();
+      v.requestRender();
+    },
+    marker(e: number | null, n = 0, headingDeg = 0) {
+      if (!area || e === null) {
+        marker.visible = false;
+        return;
+      }
+      marker.visible = true;
+      // seen from further away than on a walk: a bigger dot
+      marker.scale.setScalar(3);
+      marker.position.set(e, area.model.groundY(e, n) + 3, -n);
+      wedgeHolder.visible = true;
+      wedgeHolder.rotation.y = -(headingDeg * Math.PI) / 180;
+      v.requestRender();
+    },
+    camera(c: { azimuth: number; tilt: number; distance: number; targetE: number; targetN: number }) {
+      v.setCameraState(c);
+    },
+  };
+}
