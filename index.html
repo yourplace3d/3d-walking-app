@@ -50,7 +50,6 @@
       <div class="top">
         <div class="stats" data-for="walk">
           <span><small data-t="distance">Distance</small><b id="stat-distance">0 m</b></span>
-          <span><small data-t="time">Time</small><b id="stat-time">0:00</b></span>
           <span class="level-chip" id="stat-level"></span>
         </div>
         <h2 class="map-title" data-for="map" data-t="yourMap">Your map</h2>
@@ -72,7 +71,8 @@
         <div class="actions row">
           <button id="btn-follow" data-for="walk" data-t="centreOnMe">Centre on me</button>
           <button class="primary" id="btn-end" data-for="walk" data-t="endWalk">End walk</button>
-          <button class="primary" id="btn-home" data-for="map" data-t="home">Home</button>
+          <button id="btn-home" data-for="map" data-t="home">Home</button>
+          <button class="primary" id="btn-walk-on" data-for="map" data-t="continueWalk">Continue your walk</button>
         </div>
         <p class="attribution">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a></p>
       </div>
@@ -83,7 +83,6 @@
       <h2 data-t="walkDone">Walk done</h2>
       <dl class="summary">
         <div><dt data-t="distance">Distance</dt><dd id="sum-distance"></dd></div>
-        <div><dt data-t="time">Time</dt><dd id="sum-time"></dd></div>
         <div><dt data-t="newMap">New map</dt><dd id="sum-new"></dd></div>
       </dl>
       <div class="actions"><button class="primary" id="btn-summary-done" data-t="done">Done</button></div>

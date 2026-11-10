@@ -32,7 +32,7 @@ export function isWalk(v: unknown): v is Walk {
     isLevel(w.level) &&
     typeof w.startedAt === 'number' &&
     Array.isArray(w.points) &&
-    w.points.every((p) => Array.isArray(p) && p.length === 3 && p.every((x) => typeof x === 'number' && Number.isFinite(x)))
+    w.points.every((p) => Array.isArray(p) && (p.length === 3 || (p.length === 4 && p[3] === 1)) && p.every((x) => typeof x === 'number' && Number.isFinite(x)))
   );
 }
 

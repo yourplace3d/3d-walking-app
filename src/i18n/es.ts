@@ -47,7 +47,6 @@ export const es: Messages = {
   compassLabel: 'Brújula. Toca para poner el norte arriba.',
   compassNoHeading: 'Tu teléfono no da la dirección aquí: la brújula solo muestra el norte.',
   distance: 'Distancia',
-  time: 'Tiempo',
 
   walkDone: 'Caminata terminada',
   newMap: 'Mapa nuevo',

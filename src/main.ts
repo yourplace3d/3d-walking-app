@@ -14,7 +14,7 @@ import { makeProjector, type LngLat } from './geo/projection';
 import { DATA_ZOOM, fetchTiles, parseTiles, tilesForSquare } from './geo/tiles';
 import { loadHeightGrid } from './geo/terrain';
 import { clearMapCache, mapCacheSize } from './geo/mapCache';
-import { areaText, bytes, distance, duration, t, translatePage } from './i18n';
+import { areaText, bytes, distance, t, translatePage } from './i18n';
 import { CityModel } from './scene/cityModel';
 import { isWebGL2Available, Viewer } from './scene/viewer';
 import { AREA_SIZE_M, areaCentre, areaKey, needsRecentre } from './walk/area';
@@ -23,7 +23,7 @@ import { askOrientation, screenAngle, watchHeading } from './walk/heading';
 import { isLevel, LEVEL_RULES, type Level } from './walk/levels';
 import { GRID_N, saveAround } from './walk/offline';
 import { newlyRevealedM2, RevealMask } from './walk/reveal';
-import { judgeFix, MAX_JOIN_M, metresBetween, walkLength, type Fix, type WalkPoint } from './walk/track';
+import { joins, judgeFix, metresBetween, Tracker, walkLength, type Fix } from './walk/track';
 import { IdbStore, newWalk, type Walk } from './walk/walks';
 
 type Screen = 'home' | 'level' | 'walk' | 'map' | 'summary' | 'offline' | 'settings';
@@ -224,9 +224,11 @@ let lastFix: Fix | null = null;
 let lastSave = 0;
 let follow = true;
 let heading: number | null = null;
-let clock: number | null = null;
 /** the camera has been aimed at the walker once on this walk (on hard it then stays put) */
 let aimed = false;
+/** where this outing started in the walk's points (a walk can be continued many times) */
+let sessionStart = 0;
+let tracker = new Tracker();
 
 function rules() {
   return LEVEL_RULES[current?.level ?? 'medium'];
@@ -251,7 +253,12 @@ async function startWalk(level: Level, resume: Walk | null): Promise<void> {
     }
     await store.put(current);
     walks = await store.all();
+  } else {
+    await store.put(current);
   }
+  sessionStart = current.points.length;
+  // a phone may first hand over a position from before the walk started
+  tracker = new Tracker(Date.now() - 5000);
   lastFix = null;
   follow = rules().showDot;
   marker.visible = false;
@@ -261,7 +268,6 @@ async function startWalk(level: Level, resume: Walk | null): Promise<void> {
   aimed = false;
   setStatus(t.waitingGps);
   updateStats();
-  clock = window.setInterval(updateStats, 1000);
   if (!navigator.geolocation) {
     setStatus(t.gpsUnavailable);
     return;
@@ -291,18 +297,16 @@ function onPosition(pos: GeolocationPosition): void {
     wedgeHolder.rotation.y = -((pos.coords.heading ?? 0) * Math.PI) / 180;
   }
   const prev = current.points.at(-1) ?? null;
-  const verdict = judgeFix(fix, prev);
+  const { verdict, point: p } = tracker.next(fix, prev);
   const here = { lon: fix.lon, lat: fix.lat };
   // only fixes that count move the map: a GPS jump must not load another square
   if (!area && !areaLoading && (verdict === 'keep' || verdict === 'still')) void loadArea(areaCentre(here), { at: here });
-  else if (area && verdict === 'keep' && needsRecentre(area.centre, here) && areaKey(areaCentre(here)) !== areaKey(area.centre)) void loadArea(areaCentre(here));
-  if (verdict === 'keep') {
-    const p: WalkPoint = [fix.lon, fix.lat, fix.time];
+  else if (area && p && needsRecentre(area.centre, here) && areaKey(areaCentre(here)) !== areaKey(area.centre)) void loadArea(areaCentre(here));
+  if (p) {
     current.points.push(p);
     debug.kept = current.points.length;
     if (area) {
-      const joined = prev !== null && metresBetween(prev[0], prev[1], p[0], p[1]) <= MAX_JOIN_M;
-      if (area.mask.addStep(joined ? prev : null, p, rules().revealM)) {
+      if (area.mask.addStep(prev && joins(prev, p) ? prev : null, p, rules().revealM)) {
         area.fog.update();
         debug.revealedM2 = area.mask.revealedM2();
       }
@@ -341,7 +345,6 @@ function placeMarker(fix: Fix): void {
 function updateStats(): void {
   if (!current) return;
   $('stat-distance').textContent = distance(walkLength(current.points));
-  $('stat-time').textContent = duration((current.endedAt ?? Date.now()) - current.startedAt);
 }
 
 function updateCompass(): void {
@@ -364,10 +367,12 @@ async function endWalk(): Promise<void> {
   stopWatching();
   current.endedAt = Date.now();
   await store.put(current);
-  const others = walks.filter((w) => w.id !== current!.id);
-  $('sum-distance').textContent = distance(walkLength(current.points));
-  $('sum-time').textContent = duration(current.endedAt - current.startedAt);
-  $('sum-new').textContent = areaText(newlyRevealedM2(current, others));
+  // what this outing added: its own stretch, against everything walked before it
+  const earlier = { level: current.level, points: current.points.slice(0, sessionStart) };
+  const outing = { level: current.level, points: current.points.slice(Math.max(0, sessionStart - 1)) };
+  const others = [...walks.filter((w) => w.id !== current!.id), earlier];
+  $('sum-distance').textContent = distance(walkLength(outing.points));
+  $('sum-new').textContent = areaText(newlyRevealedM2(outing, others));
   current = null;
   walks = await store.all();
   marker.visible = false;
@@ -380,8 +385,6 @@ function stopWatching(): void {
   stopHeading?.();
   stopHeading = null;
   heading = null;
-  if (clock !== null) clearInterval(clock);
-  clock = null;
   void setWakeLock(false);
   ($('wake') as HTMLInputElement).checked = false;
 }
@@ -409,10 +412,16 @@ document.addEventListener('visibilitychange', () => {
 
 // ------------------------------------------------------------------ the map of all walks
 
+/** The walk that went on most recently (by its last point). */
+function lastWalkWithPoints(): Walk | undefined {
+  return walks.filter((w) => w.points.length).sort((a, b) => a.points.at(-1)![2] - b.points.at(-1)![2]).at(-1);
+}
+
 async function showMap(): Promise<void> {
   walks = await store.all();
   setScreen('map');
-  const lastWalk = [...walks].reverse().find((w) => w.points.length);
+  const lastWalk = lastWalkWithPoints();
+  $('btn-walk-on').hidden = !lastWalk;
   const last = lastWalk?.points.at(-1);
   if (!lastWalk || !last) {
     setStatus(t.noWalksYet);
@@ -520,6 +529,13 @@ $('btn-end').addEventListener('click', () => void endWalk());
 $('btn-summary-done').addEventListener('click', () => {
   setScreen('home');
   void refreshHome();
+});
+// pick up the last walk where it stopped: same walk, same level, the map keeps growing
+$('btn-walk-on').addEventListener('click', () => {
+  const last = lastWalkWithPoints();
+  if (!last) return;
+  last.endedAt = null;
+  void startWalk(last.level, last);
 });
 $('btn-home').addEventListener('click', () => {
   setScreen('home');

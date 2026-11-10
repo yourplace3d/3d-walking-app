@@ -47,7 +47,6 @@ export const pt: Messages = {
   compassLabel: 'Bússola. Toque para deixar o norte para cima.',
   compassNoHeading: 'Seu celular não dá a direção aqui: a bússola mostra só o norte.',
   distance: 'Distância',
-  time: 'Tempo',
 
   walkDone: 'Caminhada concluída',
   newMap: 'Mapa novo',

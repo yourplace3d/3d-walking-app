@@ -18,11 +18,15 @@ shapes), and it only appears where you have walked.
   inked edge, and it stays open. Buildings appear whole once the middle of their footprint is revealed.
 - **The compass** shows north, and the way your phone points where the phone can tell. Tap it to turn the map
   north up.
-- **See my map** shows everything you have walked. Double-tap to look further away.
+- **See my map** shows everything you have walked, on your last walk. **Continue your walk** picks it up there,
+  with its level, so one walk can grow over many outings. There's no timer: the summary after each outing
+  shows how far you went and how much new map you opened.
 - **Save an area for offline** keeps the map about 2 km around your location or a place you search on the phone,
   so a walk there works without signal. Map squares you've opened are kept too.
 - The map loads one 2 km square at a time, on a fixed grid, and the next square loads as you walk on.
-- GPS fixes are filtered: inaccurate fixes, standing still and jumps faster than a runner don't open the map.
+- GPS fixes are filtered: inaccurate fixes, positions from before the walk, standing still and jumps faster
+  than a runner don't open the map. If the fixes after a jump agree for a few seconds, the walk goes on from
+  there, without joining the two places.
 - English, Spanish, Portuguese (Brazil) and German, from the browser's language or the picker in Settings.
 
 ## Privacy

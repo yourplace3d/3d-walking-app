@@ -53,7 +53,6 @@ export const en = {
   compassLabel: 'Compass. Tap to turn the map north up.',
   compassNoHeading: 'Your phone gives no heading here: the compass shows north only.',
   distance: 'Distance',
-  time: 'Time',
 
   // summary
   walkDone: 'Walk done',

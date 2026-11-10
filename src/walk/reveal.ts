@@ -7,7 +7,7 @@
 
 import { makeProjector, type LngLat } from '../geo/projection';
 import { LEVEL_RULES, type Level } from './levels';
-import { MAX_JOIN_M, metresBetween, type WalkPoint } from './track';
+import { joins, type WalkPoint } from './track';
 
 /** The edge of the revealed map fades over this width (m); the shader makes it ragged, like a coastline. */
 export const FEATHER_M = 12;
@@ -43,8 +43,7 @@ export class RevealMask {
     for (let i = 0; i < w.points.length; i++) {
       const p = w.points[i];
       const q = i > 0 ? w.points[i - 1] : null;
-      const joined = q && metresBetween(q[0], q[1], p[0], p[1]) <= MAX_JOIN_M;
-      changed = this.addStep(joined ? q : null, p, r) || changed;
+      changed = this.addStep(q && joins(q, p) ? q : null, p, r) || changed;
     }
     return changed;
   }

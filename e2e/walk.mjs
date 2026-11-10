@@ -171,6 +171,7 @@ try {
   await walkEast(context, page, 0, 0, 24);
   let s = await state(page);
   expect(s.kept >= 15, `GPS fixes become the walk (${s.kept} points kept)`);
+  const firstKept = s.kept;
   // ~120 m walked at 50 m each side: about 2 × 50 × 120 + π × 50² ≈ 19,800 m²
   expect(s.revealedM2 > 14000 && s.revealedM2 < 26000, `the map opened along the path (${Math.round(s.revealedM2)} m²)`);
   expect(s.dot === true, 'on medium you see yourself');
@@ -204,8 +205,24 @@ try {
   expect(s.revealedM2 > 14000, `the map is still there after a reload (${Math.round(s.revealedM2)} m²)`);
   await page.waitForTimeout(500);
   await page.screenshot({ path: join(out, '05-my-map.png') });
+  s = await state(page);
   expect((await paperShare(page, { x: 0, y: vp.height / 2 - 100, width: vp.width, height: 200 })) < 0.9, 'my map opens on the walk, not on blank parchment');
-  await page.click('#btn-home');
+  // ---- continue the last walk from the map, on the very spot
+  expect(await page.isVisible('#btn-walk-on'), 'my map offers to continue the walk');
+  const keptBefore = firstKept;
+  await context.setGeolocation(at(125, 0));
+  await page.click('#btn-walk-on');
+  await waitFor(page, (s) => s.stage === 'walk', 'the continued walk');
+  expect((await page.textContent('#stat-level')) === 'Medium', 'the continued walk keeps its level');
+  await walkEast(context, page, 125, 0, 6);
+  s = await state(page);
+  expect(s.kept >= keptBefore + 4, `the same walk grows (${keptBefore} → ${s.kept} points)`);
+  expect(!(await page.isVisible('#stat-time')), 'no timer');
+  await page.click('#btn-end');
+  await waitFor(page, (s) => s.stage === 'summary', 'the summary of the continued walk');
+  const outing = await page.textContent('#sum-distance');
+  expect(/^\d+ m$/.test(outing) && parseInt(outing) < 60, `the summary counts only this outing (${outing})`);
+  await page.click('#btn-summary-done');
 
   // ---- hard: you don't see yourself, and the band is narrower
   await page.click('#btn-start');

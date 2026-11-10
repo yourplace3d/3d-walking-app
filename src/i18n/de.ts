@@ -47,7 +47,6 @@ export const de: Messages = {
   compassLabel: 'Kompass. Tippen, um Norden nach oben zu drehen.',
   compassNoHeading: 'Dein Handy liefert hier keine Richtung: der Kompass zeigt nur Norden.',
   distance: 'Strecke',
-  time: 'Zeit',
 
   walkDone: 'Weg beendet',
   newMap: 'Neue Karte',

@@ -14,8 +14,11 @@ export interface Fix {
   time: number;
 }
 
-/** A kept point of a walk: [lon, lat, time in ms]. Arrays keep thousands of points small in storage. */
-export type WalkPoint = [number, number, number];
+/**
+ * A kept point of a walk: [lon, lat, time in ms], and a 4th element 1 when it starts a new stretch
+ * (after a confirmed jump: not joined to the point before). Arrays keep thousands of points small.
+ */
+export type WalkPoint = [number, number, number, 1?];
 
 /** Fixes less accurate than this are dropped (m). */
 export const MAX_ACCURACY_M = 35;
@@ -51,12 +54,48 @@ export function judgeFix(fix: Fix, last: WalkPoint | null): FixVerdict {
   return 'keep';
 }
 
+/** Whether the path runs on from `prev` to `p` (else a gap: a new stretch starts at p). */
+export function joins(prev: WalkPoint, p: WalkPoint): boolean {
+  return p[3] !== 1 && metresBetween(prev[0], prev[1], p[0], p[1]) <= MAX_JOIN_M;
+}
+
 /** Total length of a walk (m), not counting gaps that aren't joined. */
 export function walkLength(points: readonly WalkPoint[]): number {
   let total = 0;
   for (let i = 1; i < points.length; i++) {
-    const d = metresBetween(points[i - 1][0], points[i - 1][1], points[i][0], points[i][1]);
-    if (d <= MAX_JOIN_M) total += d;
+    if (joins(points[i - 1], points[i])) total += metresBetween(points[i - 1][0], points[i - 1][1], points[i][0], points[i][1]);
   }
   return total;
+}
+
+/** A jump confirmed by fixes for this long (ms) is where you really are: a new stretch starts there. */
+export const CONFIRM_JUMP_MS = 3000;
+
+/**
+ * Turns fixes into points for one outing. Ignores positions older than the outing (a phone may
+ * hand over a cached one first), and gets out of a jump: if the fixes after it agree with each
+ * other for a few seconds, the walk goes on from there, without joining the two places.
+ */
+export class Tracker {
+  private pending: WalkPoint | null = null;
+
+  constructor(private readonly notBefore = 0) {}
+
+  next(fix: Fix, last: WalkPoint | null): { verdict: FixVerdict | 'stale'; point: WalkPoint | null } {
+    if (fix.time < this.notBefore) return { verdict: 'stale', point: null };
+    const verdict = judgeFix(fix, last);
+    if (verdict === 'keep') {
+      this.pending = null;
+      return { verdict, point: [fix.lon, fix.lat, fix.time] };
+    }
+    if (verdict !== 'jump') return { verdict, point: null };
+    const p = this.pending;
+    const agrees = p && judgeFix(fix, p) !== 'jump' && fix.time - p[2] >= CONFIRM_JUMP_MS;
+    if (agrees) {
+      this.pending = null;
+      return { verdict: 'keep', point: [fix.lon, fix.lat, fix.time, 1] };
+    }
+    if (!p || judgeFix(fix, p) === 'jump') this.pending = [fix.lon, fix.lat, fix.time];
+    return { verdict, point: null };
+  }
 }

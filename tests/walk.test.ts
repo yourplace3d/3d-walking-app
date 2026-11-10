@@ -4,7 +4,7 @@ import { AREA_SIZE_M, areaCentre, areaKey, needsRecentre, offlineAreas, RECENTRE
 import { headingFrom, screenAngle, smoothHeading } from '../src/walk/heading';
 import { LEVEL_RULES } from '../src/walk/levels';
 import { FEATHER_M, newlyRevealedM2, RevealMask } from '../src/walk/reveal';
-import { judgeFix, MAX_ACCURACY_M, metresBetween, walkLength, type WalkPoint } from '../src/walk/track';
+import { CONFIRM_JUMP_MS, joins, judgeFix, MAX_ACCURACY_M, metresBetween, Tracker, walkLength, type WalkPoint } from '../src/walk/track';
 import { isWalk, MemoryStore, newWalk } from '../src/walk/walks';
 
 const C = { lat: 48.78, lon: 9.18 };
@@ -177,5 +177,42 @@ describe('walk storage', () => {
     expect(isWalk({ ...newWalk('medium'), level: 'extreme' })).toBe(false);
     expect(isWalk({ ...newWalk('medium'), points: [[1, 2]] })).toBe(false);
     expect(isWalk(null)).toBe(false);
+  });
+});
+
+describe('tracker', () => {
+  it('ignores positions from before the walk', () => {
+    const tr = new Tracker(100_000);
+    expect(tr.next(fix(0, 0, 50), null).verdict).toBe('stale');
+    expect(tr.next(fix(0, 0, 101), null).point).not.toBeNull();
+  });
+  it('drops a lone jump', () => {
+    const tr = new Tracker();
+    const last = pt(0, 0, 0);
+    expect(tr.next(fix(500, 0, 1), last).verdict).toBe('jump');
+    expect(tr.next(fix(5, 0, 2), last).verdict).toBe('keep');
+    expect(tr.next(fix(500, 0, 3), last).point).toBeNull();
+  });
+  it('goes on from a jump the next fixes confirm, as a new stretch', () => {
+    const tr = new Tracker();
+    const last = pt(0, 0, 0);
+    expect(tr.next(fix(500, 0, 1), last).point).toBeNull();
+    expect(tr.next(fix(503, 0, 2), last).point).toBeNull();
+    const r = tr.next(fix(508, 0, 1 + CONFIRM_JUMP_MS / 1000), last);
+    expect(r.verdict).toBe('keep');
+    expect(r.point?.[3]).toBe(1);
+    // and the two places aren't joined
+    expect(joins(last, r.point!)).toBe(false);
+    expect(walkLength([last, r.point!])).toBe(0);
+    const m = new RevealMask(C, 2000, 1000);
+    m.addWalk({ level: 'hard', points: [pt(-100, 0, 0), r.point!] });
+    expect(m.valueAt(200, 0)).toBe(0);
+  });
+  it('stores the stretch mark', () => {
+    const w = newWalk('easy');
+    w.points.push([1, 2, 3, 1]);
+    expect(isWalk(w)).toBe(true);
+    w.points.push([1, 2, 3, 2 as 1]);
+    expect(isWalk(w)).toBe(false);
   });
 });
