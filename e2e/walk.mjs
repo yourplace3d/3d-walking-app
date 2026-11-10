@@ -313,6 +313,27 @@ try {
   await page.waitForTimeout(500);
   expect(/No walks yet/.test(await page.textContent('#status')), 'after deleting, there are no walks');
 
+  // ---- like the iPhone app's web view: no Cache Storage, the map is kept in IndexedDB
+  const app = await browser.newContext({ ...devices['Pixel 7'], permissions: ['geolocation'], geolocation: at(300, -300), serviceWorkers: 'block' });
+  await app.addInitScript(() => Object.defineProperty(window, 'caches', { value: undefined }));
+  await routeAll(app);
+  const p3 = await app.newPage();
+  watch(p3);
+  await p3.goto(base);
+  await p3.click('#btn-start');
+  await p3.click('#btn-go');
+  await waitFor(p3, (s) => s.stage === 'walk' && s.area === 'ready', 'a walk without Cache Storage');
+  await p3.click('#btn-end');
+  await p3.click('#btn-summary-done');
+  network = 'down';
+  await p3.reload();
+  await p3.click('#btn-start');
+  await p3.click('#btn-go');
+  await waitFor(p3, (s) => s.area === 'ready', 'the map from IndexedDB with no network');
+  expect((await state(p3)).buildings > 50, 'without Cache Storage the map still works offline');
+  network = 'ok';
+  await app.close();
+
   // ---- another language
   const de = await browser.newContext({ ...devices['Pixel 7'], locale: 'de-DE', serviceWorkers: 'block' });
   await routeAll(de);

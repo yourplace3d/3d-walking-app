@@ -32,6 +32,9 @@ export const pt: Messages = {
   waitingGps: 'Esperando sua posição…',
   gpsAccuracy: (m) => `Posição ±${m} m`,
   gpsWeak: (m) => `GPS fraco (±${m} m): o mapa volta a abrir quando o sinal melhorar. Céu aberto ajuda.`,
+  gpsDeniedApp: 'A localização está desligada para o Walk it 3D. Ative em Ajustes › Walk it 3D › Localização.',
+  bgTitle: 'Walk it 3D',
+  bgMessage: 'Gravando sua caminhada. Ela fica neste celular.',
   gpsDenied: 'A localização está desligada para este site. Ative nas configurações do navegador para caminhar.',
   gpsUnavailable: 'Este aparelho não consegue dar uma posição.',
   loadingMap: 'Carregando o mapa…',
@@ -76,6 +79,7 @@ export const pt: Messages = {
   deletedWalks: 'Suas caminhadas foram apagadas.',
   deleteMapData: 'Apagar os dados do mapa salvos',
   deletedMapData: 'Dados do mapa apagados.',
+  privacyPolicy: 'Política de privacidade',
   privacyTitle: 'Privacidade',
   privacyLong:
     'Sua posição só é usada enquanto você caminha e o app está aberto. Suas caminhadas e o mapa que elas revelam ficam neste navegador, neste aparelho. Nunca são enviados e não há conta. O app baixa o mapa público da área onde você está do OpenFreeMap (dados do mapa) e do AWS Open Data (relevo), como qualquer app de mapas.',

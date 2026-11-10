@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Walk it 3D privacy</title>
+<style>
+  :root { --paper: #efe6d2; --ink: #3a2e22; --accent: #a3237e; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.55 system-ui, -apple-system, sans-serif; }
+  main { max-width: 640px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 28px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 28px 0 6px; }
+  a { color: var(--accent); }
+  .muted { opacity: 0.7; font-size: 15px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Walk it 3D privacy</h1>
+  <p class="muted">Applies to the Walk it 3D app and website. Last updated 10 November 2026.</p>
+
+  <h2>In short</h2>
+  <p>Walk it 3D collects no data. Your walks and your revealed map stay on your device. There is no account, no analytics, no ads and no tracking.</p>
+
+  <h2>Your location</h2>
+  <p>Your position is used only during a walk you start, to open the map where you walk. In the iPhone app it keeps recording while the screen is locked, until you end the walk; iOS shows its location sign meanwhile. Positions are stored only on your device and are never sent anywhere.</p>
+
+  <h2>Map data</h2>
+  <p>The app downloads public map pieces (OpenStreetMap data through OpenFreeMap, and terrain heights from the public terrain tiles on Amazon Web Services). These requests ask for a map area, like any map app; they never include your walk, and the app adds no identifier to them. These services may see your IP address, as any website does.</p>
+  <p>When you search for a place to save for offline use, the text you type is sent to the OpenStreetMap search service (Nominatim).</p>
+
+  <h2>Compass</h2>
+  <p>The compass reads your device's direction sensors on the device. Nothing is stored or sent.</p>
+
+  <h2>Deleting</h2>
+  <p>Settings › Delete my walks and map removes your walks and map. Settings › Delete saved map data removes downloaded map pieces. Deleting the app removes everything.</p>
+
+  <h2>Children</h2>
+  <p>The app collects no personal data from anyone, children included.</p>
+
+  <h2>Contact</h2>
+  <p>Questions: open an issue at <a href="https://github.com/yourplace3d/3d-walking-app/issues">github.com/yourplace3d/3d-walking-app</a>.</p>
+</main>
+</body>
+</html>

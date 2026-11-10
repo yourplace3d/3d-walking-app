@@ -38,6 +38,9 @@ export const en = {
   waitingGps: 'Waiting for your position…',
   gpsAccuracy: (m: string) => `Position ±${m} m`,
   gpsWeak: (m: string) => `Weak GPS (±${m} m): the map opens again when the signal is better. Open sky helps.`,
+  gpsDeniedApp: 'Location is off for Walk it 3D. Allow it in Settings › Walk it 3D › Location.',
+  bgTitle: 'Walk it 3D',
+  bgMessage: 'Recording your walk. It stays on this phone.',
   gpsDenied: 'Location is off for this site. Allow it in your browser settings to walk.',
   gpsUnavailable: 'This device can’t give a position.',
   loadingMap: 'Loading the map…',
@@ -86,6 +89,7 @@ export const en = {
   deletedWalks: 'Your walks are deleted.',
   deleteMapData: 'Delete saved map data',
   deletedMapData: 'Saved map data deleted.',
+  privacyPolicy: 'Privacy policy',
   privacyTitle: 'Privacy',
   privacyLong:
     'Your position is only used while a walk is on and the app is open. Your walks and the map they reveal are kept in this browser on this device. They are never uploaded, and there is no account. The app fetches the public map for the area you are in from OpenFreeMap (map data) and AWS Open Data (terrain), like any map app.',

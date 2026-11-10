@@ -23,6 +23,7 @@ import { askOrientation, screenAngle, watchHeading } from './walk/heading';
 import { isLevel, LEVEL_RULES, type Level } from './walk/levels';
 import { GRID_N, saveAround } from './walk/offline';
 import { newlyRevealedM2, RevealMask } from './walk/reveal';
+import { isNativeApp, startGps, type GpsProblem, type Reading } from './walk/gps';
 import { joins, judgeFix, metresBetween, Tracker, walkLength, type Fix } from './walk/track';
 import { IdbStore, newWalk, type Walk } from './walk/walks';
 
@@ -230,7 +231,7 @@ async function loadArea(centre: LngLat, focus?: { at: LngLat; distance?: number 
 
 // ------------------------------------------------------------------ walking
 
-let watchId: number | null = null;
+let stopGps: (() => void) | null = null;
 let stopHeading: (() => void) | null = null;
 let lastFix: Fix | null = null;
 let lastSave = 0;
@@ -281,10 +282,6 @@ async function startWalk(level: Level, resume: Walk | null): Promise<void> {
   aimed = false;
   setStatus(t.waitingGps);
   updateStats();
-  if (!navigator.geolocation) {
-    setStatus(t.gpsUnavailable);
-    return;
-  }
   watchGps();
   if (compassOk) {
     stopHeading = watchHeading((h) => {
@@ -301,8 +298,8 @@ async function startWalk(level: Level, resume: Walk | null): Promise<void> {
 }
 
 function watchGps(): void {
-  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-  watchId = navigator.geolocation.watchPosition(onPosition, onPositionError, { enableHighAccuracy: true, maximumAge: 2000, timeout: 30000 });
+  stopGps?.();
+  stopGps = startGps(onPosition, onGpsProblem, { backgroundTitle: t.bgTitle, backgroundMessage: t.bgMessage });
 }
 
 /**
@@ -310,20 +307,21 @@ function watchGps(): void {
  * old or rough position first. Ask afresh and take only positions from now on.
  */
 function resumeGps(): void {
-  if (!current || screenNow !== 'walk' || watchId === null) return;
+  // the app's GPS keeps going with the screen off: nothing to catch up on
+  if (!current || screenNow !== 'walk' || stopGps === null || isNativeApp()) return;
   tracker = new Tracker(Date.now() - 1000, rules().maxAccuracyM);
   watchGps();
   setStatus(t.waitingGps);
 }
 
-function onPosition(pos: GeolocationPosition): void {
+function onPosition(r: Reading): void {
   if (!current) return;
-  const fix: Fix = { lon: pos.coords.longitude, lat: pos.coords.latitude, accuracy: pos.coords.accuracy, time: pos.timestamp || Date.now() };
+  const fix: Fix = { lon: r.lon, lat: r.lat, accuracy: r.accuracy, time: r.time };
   lastFix = fix;
   // without a compass, the way you walk is the best heading there is
-  if (heading === null && pos.coords.heading !== null && Number.isFinite(pos.coords.heading) && (pos.coords.speed ?? 0) > 0.5) {
+  if (heading === null && r.heading !== null && (r.speed ?? 0) > 0.5) {
     wedgeHolder.visible = rules().showDot;
-    wedgeHolder.rotation.y = -((pos.coords.heading ?? 0) * Math.PI) / 180;
+    wedgeHolder.rotation.y = -(r.heading * Math.PI) / 180;
   }
   const prev = current.points.at(-1) ?? null;
   const { verdict, point: p } = tracker.next(fix, prev);
@@ -352,10 +350,8 @@ function onPosition(pos: GeolocationPosition): void {
   viewer?.requestRender();
 }
 
-function onPositionError(err: GeolocationPositionError): void {
-  if (err.code === err.PERMISSION_DENIED) setStatus(t.gpsDenied);
-  else if (err.code === err.POSITION_UNAVAILABLE) setStatus(t.gpsUnavailable);
-  // a timeout: keep waiting, the watch goes on
+function onGpsProblem(p: GpsProblem): void {
+  setStatus(p === 'denied' ? (isNativeApp() ? t.gpsDeniedApp : t.gpsDenied) : t.gpsUnavailable);
 }
 
 function placeMarker(fix: Fix): void {
@@ -410,8 +406,8 @@ async function endWalk(): Promise<void> {
 }
 
 function stopWatching(): void {
-  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-  watchId = null;
+  stopGps?.();
+  stopGps = null;
   stopHeading?.();
   stopHeading = null;
   heading = null;

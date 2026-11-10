@@ -32,6 +32,9 @@ export const de: Messages = {
   waitingGps: 'Warte auf deine Position…',
   gpsAccuracy: (m) => `Position ±${m} m`,
   gpsWeak: (m) => `Schwaches GPS (±${m} m): die Karte öffnet sich wieder, sobald das Signal besser ist. Freier Himmel hilft.`,
+  gpsDeniedApp: 'Standort ist für Walk it 3D aus. Erlaube ihn unter Einstellungen › Walk it 3D › Standort.',
+  bgTitle: 'Walk it 3D',
+  bgMessage: 'Dein Spaziergang wird aufgezeichnet. Er bleibt auf diesem Handy.',
   gpsDenied: 'Der Standort ist für diese Seite aus. Erlaube ihn in den Browser-Einstellungen, um zu gehen.',
   gpsUnavailable: 'Dieses Gerät kann keine Position liefern.',
   loadingMap: 'Karte wird geladen…',
@@ -76,6 +79,7 @@ export const de: Messages = {
   deletedWalks: 'Deine Wege sind gelöscht.',
   deleteMapData: 'Gespeicherte Kartendaten löschen',
   deletedMapData: 'Kartendaten gelöscht.',
+  privacyPolicy: 'Datenschutzerklärung',
   privacyTitle: 'Datenschutz',
   privacyLong:
     'Deine Position wird nur benutzt, solange ein Weg läuft und die App offen ist. Deine Wege und die Karte, die sie aufdecken, bleiben in diesem Browser auf diesem Gerät. Sie werden nie hochgeladen, und es gibt kein Konto. Die App lädt die öffentliche Karte für das Gebiet, in dem du bist, von OpenFreeMap (Kartendaten) und AWS Open Data (Gelände), wie jede Karten-App.',

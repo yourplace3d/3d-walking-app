@@ -53,11 +53,15 @@ is then at https://yourplace3d.github.io/3d-walking-app/.
 The end-to-end test needs Playwright with Chromium; it answers every map request from fixtures
 (`e2e/fixtures/`), so it runs without network. Screenshots go to `e2e/out/`.
 
+**iPhone app.** `ios/` holds the Xcode project (Capacitor): the same app, with GPS that keeps recording while
+the screen is locked. Building it needs a Mac with Xcode; see [ios/README.md](ios/README.md).
+
 ## Code
 
 - `src/walk/`: the app's own parts. `levels.ts` (the three levels), `track.ts` (GPS fixes into a walk),
   `area.ts` (which 2 km square is loaded), `reveal.ts` (the revealed map as a raster, and the area a walk
-  opened), `fog.ts` (the shader: parchment where unwalked), `heading.ts` (compass), `walks.ts` (storage on the
+  opened), `fog.ts` (the shader: parchment where unwalked), `heading.ts` (compass), `gps.ts` (positions from the browser, or the
+  app's native GPS), `walks.ts` (storage on the
   device), `offline.ts` (saving squares for offline).
 - `src/geo/`, `src/scene/`, `src/export/`: the 3D engine, copied from [Your Place](https://github.com/yourplace3d/3d-city)
   (MIT). Changes: tiles go through an on-device cache (`geo/mapCache.ts`); buildings carry their footprint's

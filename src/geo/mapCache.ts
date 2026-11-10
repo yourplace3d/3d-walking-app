@@ -1,18 +1,61 @@
 /**
- * Map tiles and terrain tiles kept on the device (Cache Storage), so a walk keeps working when the
- * signal drops. "Save for offline" fills it ahead of a walk; every tile a walk loads is kept too.
- * Only public map data goes in here, never the walk. Fails soft: without Cache Storage the
- * network is used as before.
+ * Map tiles and terrain tiles kept on the device, so a walk keeps working when the signal drops.
+ * "Save for offline" fills it ahead of a walk; every tile a walk loads is kept too. Only public
+ * map data goes in here, never the walk. Cache Storage where there is one; IndexedDB where there
+ * isn't (the iPhone app's web view). Fails soft: with neither, the network is used as before.
  */
 
 export const MAP_CACHE = 'walk-it-3d-map-v1';
 
-let cachePromise: Promise<Cache | null> | null = null;
+/** The bit of the Cache interface used here. */
+interface TileCache {
+  match(url: string): Promise<Response | undefined>;
+  put(url: string, res: Response): Promise<void>;
+  keys(): Promise<readonly unknown[]>;
+  /** only the IndexedDB one: Cache Storage is deleted as a whole */
+  clear?(): Promise<void>;
+}
 
-function openCache(): Promise<Cache | null> {
+const IDB_STORE = 'tiles';
+
+function req<T>(r: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+}
+
+/** Tiles in IndexedDB, as bytes and a content type, keyed by URL. */
+async function idbCache(): Promise<TileCache | null> {
+  if (typeof indexedDB === 'undefined') return null;
+  const open = indexedDB.open(MAP_CACHE, 1);
+  open.onupgradeneeded = () => open.result.createObjectStore(IDB_STORE);
+  const db = await req(open);
+  const store = (mode: IDBTransactionMode) => db.transaction(IDB_STORE, mode).objectStore(IDB_STORE);
+  return {
+    async match(url) {
+      const hit = (await req(store('readonly').get(url))) as { body: ArrayBuffer; type: string } | undefined;
+      return hit ? new Response(hit.body, { headers: { 'content-type': hit.type } }) : undefined;
+    },
+    async put(url, res) {
+      const body = await res.arrayBuffer();
+      await req(store('readwrite').put({ body, type: res.headers.get('content-type') ?? '' }, url));
+    },
+    async keys() {
+      return req(store('readonly').getAllKeys());
+    },
+    async clear() {
+      await req(store('readwrite').clear());
+    },
+  };
+}
+
+let cachePromise: Promise<TileCache | null> | null = null;
+
+function openCache(): Promise<TileCache | null> {
   cachePromise ??= (async () => {
     try {
-      return typeof caches === 'undefined' ? null : await caches.open(MAP_CACHE);
+      return typeof caches === 'undefined' ? await idbCache() : await caches.open(MAP_CACHE);
     } catch {
       return null;
     }
@@ -63,6 +106,7 @@ export async function mapCacheSize(): Promise<{ tiles: number; bytes: number | n
 export async function clearMapCache(): Promise<void> {
   try {
     if (typeof caches !== 'undefined') await caches.delete(MAP_CACHE);
+    else await (await openCache())?.clear?.();
   } catch {
     /* nothing kept */
   }
