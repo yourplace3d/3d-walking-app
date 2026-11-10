@@ -1,0 +1,35 @@
+{
+  "name": "walk-it-3d",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Walk it 3D: walk your own city with only a 3D map and a compass. The map appears where you have walked.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourplace3d/3d-walking-app.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "npm run build && node e2e/walk.mjs"
+  },
+  "dependencies": {
+    "@mapbox/vector-tile": "2.0.3",
+    "earcut": "3.2.4",
+    "pbf": "4.0.1",
+    "polygon-clipping": "0.15.7",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.187.0",
+    "geojson-vt": "4.0.2",
+    "typescript": "5.9.3",
+    "vite": "8.3.5",
+    "vitest": "5.1.0",
+    "vt-pbf": "3.1.3"
+  }
+}

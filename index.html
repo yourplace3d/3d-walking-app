@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Walk it 3D: a map and a compass is all you get</title>
+    <meta name="description" content="Walk your own city with only a 3D map and a compass. No street names, no labels: the map appears where you have walked. Free, no account; your walks stay on your phone." />
+    <meta name="theme-color" content="#efe6d2" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body data-screen="home">
+    <canvas id="scene" tabindex="0" data-t-attr="aria-label:canvasLabel" aria-label="Your 3D map. It shows only where you have walked."></canvas>
+
+    <!-- home -->
+    <section class="card screen" id="home" data-for="home">
+      <h1>Walk it 3D</h1>
+      <p class="tagline" data-t="tagline">A map and a compass is all you get.</p>
+      <p data-t="intro">Walk your own city for real. The 3D map has no names and no labels, and it only appears where you have walked.</p>
+      <div class="actions">
+        <button class="primary" id="btn-start" data-t="startWalk">Start a walk</button>
+        <button class="primary" id="btn-continue" hidden data-t="continueWalk">Continue your walk</button>
+        <button id="btn-map" data-t="seeMap">See my map</button>
+        <button id="btn-offline" data-t="saveOffline">Save an area for offline</button>
+        <button class="link" id="btn-settings" data-t="settings">Settings</button>
+      </div>
+      <p class="small" data-t="privacyShort">Your walks and your map stay on this phone. Nothing is uploaded, and there is no account.</p>
+      <p class="small" id="unsupported" hidden data-t="unsupportedText"></p>
+    </section>
+
+    <!-- level -->
+    <section class="card screen" id="level" data-for="level">
+      <h2 data-t="pickLevel">Pick a level</h2>
+      <div class="levels" role="radiogroup">
+        <label class="level"><input type="radio" name="level" value="easy" /><b data-t="level_easy">Easy</b><span data-t="levelText_easy"></span></label>
+        <label class="level"><input type="radio" name="level" value="medium" checked /><b data-t="level_medium">Medium</b><span data-t="levelText_medium"></span></label>
+        <label class="level"><input type="radio" name="level" value="hard" /><b data-t="level_hard">Hard</b><span data-t="levelText_hard"></span></label>
+      </div>
+      <p class="small" data-t="levelFixed">The level stays the same for the whole walk.</p>
+      <div class="actions row">
+        <button class="back" data-t="back">Back</button>
+        <button class="primary" id="btn-go" data-t="go">Go</button>
+      </div>
+    </section>
+
+    <!-- walking and the map -->
+    <div class="hud" data-for="walk map">
+      <div class="top">
+        <div class="stats" data-for="walk">
+          <span><small data-t="distance">Distance</small><b id="stat-distance">0 m</b></span>
+          <span><small data-t="time">Time</small><b id="stat-time">0:00</b></span>
+          <span class="level-chip" id="stat-level"></span>
+        </div>
+        <h2 class="map-title" data-for="map" data-t="yourMap">Your map</h2>
+        <button class="compass" id="compass" data-t-attr="aria-label:compassLabel;title:compassLabel">
+          <svg viewBox="-50 -50 100 100" aria-hidden="true">
+            <circle r="46" class="rose-ring" />
+            <g id="compass-north">
+              <path d="M0,-40 L8,0 L0,-6 L-8,0 Z" class="needle-n" />
+              <path d="M0,40 L8,0 L0,6 L-8,0 Z" class="needle-s" />
+              <text y="-27" text-anchor="middle" class="rose-n">N</text>
+            </g>
+            <g id="compass-heading" hidden><path d="M0,-47 L6,-36 L-6,-36 Z" class="heading" /></g>
+          </svg>
+        </button>
+      </div>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+      <div class="bottom">
+        <label class="toggle" data-for="walk"><input type="checkbox" id="wake" /> <span data-t="keepScreenOn">Keep the screen on</span></label>
+        <div class="actions row">
+          <button id="btn-follow" data-for="walk" data-t="centreOnMe">Centre on me</button>
+          <button class="primary" id="btn-end" data-for="walk" data-t="endWalk">End walk</button>
+          <button class="primary" id="btn-home" data-for="map" data-t="home">Home</button>
+        </div>
+        <p class="attribution">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a></p>
+      </div>
+    </div>
+
+    <!-- summary -->
+    <section class="card screen" id="summary" data-for="summary">
+      <h2 data-t="walkDone">Walk done</h2>
+      <dl class="summary">
+        <div><dt data-t="distance">Distance</dt><dd id="sum-distance"></dd></div>
+        <div><dt data-t="time">Time</dt><dd id="sum-time"></dd></div>
+        <div><dt data-t="newMap">New map</dt><dd id="sum-new"></dd></div>
+      </dl>
+      <div class="actions"><button class="primary" id="btn-summary-done" data-t="done">Done</button></div>
+    </section>
+
+    <!-- offline -->
+    <section class="card screen" id="offline" data-for="offline">
+      <h2 data-t="offlineTitle">Save an area for offline</h2>
+      <p data-t="offlineText">Keeps the map about 2 km around a place on this phone, so a walk there works without signal.</p>
+      <div class="actions"><button class="primary" id="btn-save-here" data-t="aroundMe">Around my location</button></div>
+      <form id="offline-search" class="search">
+        <label for="offline-q" data-t="orPlace">Or search a place</label>
+        <div class="row">
+          <input id="offline-q" type="search" autocomplete="off" data-t-attr="placeholder:searchPlaceholder" placeholder="A place or address" />
+          <button type="submit" data-t="search">Search</button>
+        </div>
+      </form>
+      <p class="status" id="offline-status" role="status" aria-live="polite"></p>
+      <p class="small" id="offline-size"></p>
+      <div class="actions row"><button class="back" data-t="back">Back</button></div>
+    </section>
+
+    <!-- settings -->
+    <section class="card screen" id="settings" data-for="settings">
+      <h2 data-t="settings">Settings</h2>
+      <label class="field"><span data-t="language">Language</span> <select class="lang-select"></select></label>
+      <div class="actions">
+        <button id="btn-delete-walks" class="danger" data-t="deleteWalks">Delete my walks and map</button>
+        <button id="btn-delete-map" data-t="deleteMapData">Delete saved map data</button>
+      </div>
+      <p class="status" id="settings-status" role="status" aria-live="polite"></p>
+      <h3 data-t="privacyTitle">Privacy</h3>
+      <p class="small" data-t="privacyLong"></p>
+      <p class="small" data-t="credits"></p>
+      <div class="actions row"><button class="back" data-t="back">Back</button></div>
+    </section>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
